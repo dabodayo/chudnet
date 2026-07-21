@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Convert shifts.json into an .ics file importable into Apple Calendar."""
+import hashlib
 import json
 import sys
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -30,6 +30,10 @@ def main() -> None:
         "VERSION:2.0",
         "PRODID:-//chudnet//Schedule Export//EN",
         "CALSCALE:GREGORIAN",
+        fold(f"X-WR-CALNAME:{data.get('calendar_name', 'Job Schedule')}"),
+        f"X-WR-TIMEZONE:{data['timezone']}",
+        "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+        "X-PUBLISHED-TTL:PT1H",
     ]
 
     for shift in data["shifts"]:
@@ -42,9 +46,13 @@ def main() -> None:
         start_utc = start.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         end_utc = end.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
+        # Stable per-date UID so refreshing the subscription updates events
+        # in place instead of duplicating them.
+        uid = hashlib.sha1(date.encode()).hexdigest()
+
         lines += [
             "BEGIN:VEVENT",
-            f"UID:{uuid.uuid4()}@chudnet",
+            f"UID:{uid}@chudnet",
             f"DTSTAMP:{now_stamp}",
             f"DTSTART:{start_utc}",
             f"DTEND:{end_utc}",

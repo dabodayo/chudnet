@@ -1,4 +1,5 @@
 {
+  "calendar_name": "Job Schedule",
   "timezone": "America/Los_Angeles",
   "shifts": [
     {"date": "2026-07-21", "start": "12:00", "end": "16:00", "label": "Job", "location": "14829 - Sunrise & Zinfandel RC"},
