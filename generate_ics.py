@@ -46,9 +46,10 @@ def main() -> None:
         start_utc = start.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         end_utc = end.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-        # Stable per-date UID so refreshing the subscription updates events
-        # in place instead of duplicating them.
-        uid = hashlib.sha1(date.encode()).hexdigest()
+        # Stable per-shift UID (date+start+location) so refreshing the
+        # subscription updates events in place instead of duplicating them,
+        # while still allowing multiple shifts on the same date.
+        uid = hashlib.sha1(f"{date}|{shift['start']}|{shift['location']}".encode()).hexdigest()
 
         lines += [
             "BEGIN:VEVENT",
