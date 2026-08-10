@@ -36,20 +36,22 @@ def main() -> None:
         "X-PUBLISHED-TTL:PT1H",
     ]
 
-    for shift in data["shifts"]:
-        date = shift["date"]
-        start = datetime.strptime(f"{date} {shift['start']}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
-        end = datetime.strptime(f"{date} {shift['end']}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+    count = 0
+    for item in data["shifts"] + data.get("events", []):
+        date = item["date"]
+        location = item.get("location", "")
+        start = datetime.strptime(f"{date} {item['start']}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+        end = datetime.strptime(f"{date} {item['end']}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
         if end <= start:
             end = end.replace(day=end.day + 1)  # overnight shift wraps to next day
 
         start_utc = start.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         end_utc = end.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-        # Stable per-shift UID (date+start+location) so refreshing the
+        # Stable per-item UID (date+start+location) so refreshing the
         # subscription updates events in place instead of duplicating them,
-        # while still allowing multiple shifts on the same date.
-        uid = hashlib.sha1(f"{date}|{shift['start']}|{shift['location']}".encode()).hexdigest()
+        # while still allowing multiple entries on the same date.
+        uid = hashlib.sha1(f"{date}|{item['start']}|{location}".encode()).hexdigest()
 
         lines += [
             "BEGIN:VEVENT",
@@ -57,14 +59,16 @@ def main() -> None:
             f"DTSTAMP:{now_stamp}",
             f"DTSTART:{start_utc}",
             f"DTEND:{end_utc}",
-            fold(f"SUMMARY:{shift['label']}"),
-            fold(f"LOCATION:{shift['location']}"),
-            "END:VEVENT",
+            fold(f"SUMMARY:{item['label']}"),
         ]
+        if location:
+            lines.append(fold(f"LOCATION:{location}"))
+        lines.append("END:VEVENT")
+        count += 1
 
     lines.append("END:VCALENDAR")
     OUTPUT.write_text("\r\n".join(lines) + "\r\n")
-    print(f"Wrote {len(data['shifts'])} events to {OUTPUT}")
+    print(f"Wrote {count} events to {OUTPUT}")
 
 
 if __name__ == "__main__":
